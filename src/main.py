@@ -86,7 +86,7 @@ async def handle_message(message):
             try:
                 await client(functions.channels.JoinChannelRequest(chat_entity))
                 if not await is_participant(client, chat_entity): raise Exception
-                await client(functions.account.UpdateNotifySettings(peer=chat_entity, settings=types.InputPeerNotifySettings(mute_until=0, show_previews=False))
+                await client(functions.account.UpdateNotifySettings(peer=chat_entity, settings=types.InputPeerNotifySettings(mute_until=0, show_previews=False)) 
             except:
                 await bot.send_message(message.chat.id, f"Não foi possível adicionar o chat [{chat_name}].")
                 return
