@@ -2,3 +2,6 @@
 
 # dotenv environment variables file
 .env
+
+# telegram session file
+dollar_yapper.session
