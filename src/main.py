@@ -257,6 +257,17 @@ async def handler(event):
         message_text = f"[ {chat_title} ]\n\n{message_text}"
         await bot.send_message(user_data['main_chat_id'], message_text)
 
+        # TODO make bot use user's preferences
+        answer = model.generate(
+            prompt + " " + "placa de vídeo" + "\nPromoção: " + message_text + "\nResposta: ",
+            chat_mode = False,
+            do_sample = False,
+            stopping_tokens = ["\n"]
+        )["answer"]
+        print(message_text)
+        print(answer)
+
+        print(f"Message from {sender_name} in {chat_title}: {message_text}")
 
 # Main functions
 async def scheduler():
@@ -276,3 +287,4 @@ if __name__ == "__main__":
             client.start(phone=os.getenv("PHONE_NUMBER"))
             client.loop.run_until_complete(main())
     except Exception as e:
+        print(f"Error while handling message: {str(e)}")
