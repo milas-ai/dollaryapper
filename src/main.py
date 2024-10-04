@@ -319,12 +319,17 @@ async def main():
         print(f"Error while handling message: {str(e)}")
 
 if __name__ == "__main__":
+    print("Starting bot...")
     if len(sys.argv) > 1:
         for arg in sys.argv[1:]:
             if arg == "--no-maritaca":
                 MARITACA_CHECK = False
             if arg == "--private":
                 PRIVATE_MODE = True
+
+    if MARITACA_CHECK: print("[Maritaca check enabled]")
+    if PRIVATE_MODE: print("[Private mode enabled]")
+                
     try:
         with client:
             client.start(phone=os.getenv("PHONE_NUMBER"))
