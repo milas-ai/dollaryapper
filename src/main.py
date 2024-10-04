@@ -29,8 +29,6 @@ MAIN_MENU_MARKUP = types.InlineKeyboardMarkup([[types.InlineKeyboardButton("Menu
 
 # Helper functions
 
-os.remove("dollar_yapper_test.session")
-
 
 async def is_participant(client, chat_entity):
     try:
@@ -250,16 +248,9 @@ async def handle_message(message):
 async def handler(event):
     chat = await event.get_chat()
     if chat.id in user_data["chat_monitor_list"]:
-        keyword_found = False
         message_text = event.message.message
-        for keyword in user_data["monitor_keywords"]:
-            if keyword.lower() in message_text.lower():
-                keyword_found = True
-                break
-        if not keyword_found: return
         chat_title = chat.title if event.is_group else "Private Chat"
         message_text = f"[ {chat_title} ]\n\n{message_text}"
-        await bot.send_message(user_data['main_chat_id'], message_text)
 
         # TODO make bot use user's preferences
         answer = model.generate(
@@ -268,10 +259,12 @@ async def handler(event):
             do_sample = False,
             stopping_tokens = ["\n"]
         )["answer"]
+        # DEBUG
         print(message_text)
         print(answer)
 
-        print(f"Message from {sender_name} in {chat_title}: {message_text}")
+        if (answer == "Sim."):
+            await bot.send_message(user_data['main_chat_id'], message_text)
 
 # Main functions
 async def scheduler():
