@@ -141,7 +141,7 @@ def add_chat_to_monitor(chat_id):
 # Bot commands
 @bot.message_handler(commands=["start"])
 async def welcome_message(message):
-    if PRIVATE_MODE:
+    if PRIVATE_MODE and message.chat.id != int(os.getenv("PRIVATE_USER_ID")):
         await bot.send_message(message.chat.id, "Desculpe, mas este bot não está disponível publicamente.")
         return
     global user
@@ -150,7 +150,7 @@ async def welcome_message(message):
 
 @bot.message_handler(commands=["help"])
 async def help_message(message):
-    if PRIVATE_MODE:
+    if PRIVATE_MODE and message.chat.id != int(os.getenv("PRIVATE_USER_ID")):
         await bot.send_message(message.chat.id, "Desculpe, mas este bot não está disponível publicamente.")
         return
     global user
@@ -199,7 +199,7 @@ async def commandshandlebtn(call):
 
 @bot.message_handler(func=lambda message: True)
 async def handle_message(message):
-    if PRIVATE_MODE:
+    if PRIVATE_MODE and message.chat.id != int(os.getenv("PRIVATE_USER_ID")):
         await bot.send_message(message.chat.id, "Desculpe, mas este bot não está disponível publicamente.")
         return
     global user
