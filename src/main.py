@@ -18,18 +18,47 @@ REMOVE_CHAT = 1
 ADD_KEYWORD = 2
 REMOVE_KEYWORD = 3
 
-HELP_MARKUP = types.InlineKeyboardMarkup(
+MENU_MARKUP = types.InlineKeyboardMarkup(
                 [[types.InlineKeyboardButton("Adicionar chat", callback_data='add_chat')], 
                 [types.InlineKeyboardButton("Remover chat", callback_data='remove_chat')], 
-                [types.InlineKeyboardButton("Adicionar palavra-chave", callback_data='add_keyword')], 
-                [types.InlineKeyboardButton("Remover palavra-chave", callback_data='remove_keyword')]]
+                [types.InlineKeyboardButton("Adicionar produto", callback_data='add_keyword')], 
+                [types.InlineKeyboardButton("Remover produto", callback_data='remove_keyword')]]
             )
 
 MAIN_MENU_MARKUP = types.InlineKeyboardMarkup([[types.InlineKeyboardButton("Menu", callback_data='main_menu')]])
 
+# Base prompt used for filtering
+prompt = """Você é um Chatbot de filtragem. Seu objetivo é analisar mensagens de promoções que você recebe em chats do Telegram e notificar o usuário sobre quais mensagens são do interesse dele. \
+Você irá receber as palavras-chave de interesse do usuário e identificar se uma mensagem é relacionada à alguma delas ou não. Suas respostas devem consistir apenas de "Sim", em caso afirmativo, ou "Não", caso contrário. \
+Você jamais deverá falar mais que isso!!
+
+Palavras-chave de interesse: controle video game
+Promoção: Promoção de Natal na Amazon, XBOX Joystick S546 por apenas 4 reais!!!
+Resposta: Sim.
+
+Palavras-chave de interesse: controle video game
+Promoção: Controle para televisão LG 925, OFERTA IMPERDÍVEL POR APENAS 10 REAIS!!!
+Resposta: Não.
+
+Palavras-chave de interesse: processador, móveis
+Promoção: INTEL I5 12400F (6/12) - PLACAS H610 / B660 / B760
+Resposta: Sim.
+
+Palavras-chave de interesse: periféricos de computador
+Promoção: MONITOR NINJA TENSEIGAN 27''
+Resposta: Sim.
+
+Palavras-chave de interesse: periféricos de computador, eletrodomésticos, livros
+Promoção: RTX 4080 SUPER GALAX
+Resposta: Não.
+
+Palavras-chave de interesse: livros clássicos, livros infantis
+Promoção: Blade Runner - Origens - Vol. 1
+Resposta: Não.
+
+Palavras-chave de interesse:"""
+
 # Helper functions
-
-
 async def is_participant(client, chat_entity):
     try:
         user = await client.get_me()
@@ -83,48 +112,16 @@ awaiting_answer = [False, False, False, False]
 user_data = load_user_data()
 
 
-# Base prompt used for filtering
-prompt = """Você é um Chatbot de filtragem. Seu objetivo é analisar mensagens de promoções que você recebe em chats do Telegram e notificar o usuário sobre quais mensagens são do interesse dele. \
-Você irá receber as palavras-chave de interesse do usuário e identificar se uma mensagem é relacionada à alguma delas ou não. Suas respostas devem consistir apenas de "Sim", em caso afirmativo, ou "Não", caso contrário. \
-Você jamais deverá falar mais que isso!!
-
-Palavras-chave de interesse: Controle Video Game
-Promoção: Promoção de Natal na Amazon, XBOX Joystick S546 por apenas 4 reais!!!
-Resposta: Sim.
-
-Palavras-chave de interesse: Controle Video Game
-Promoção: Controle para televisão LG 925, OFERTA IMPERDÍVEL POR APENAS 10 REAIS!!!
-Resposta: Não.
-
-Palavras-chave de interesse: Processador, móveis
-Promoção: INTEL I5 12400F (6/12) - PLACAS H610 / B660 / B760
-Resposta: Sim.
-
-Palavras-chave de interesse: Periféricos de computador
-Promoção: MONITOR NINJA TENSEIGAN 27''
-Resposta: Sim.
-
-Palavras-chave de interesse: Periféricos de computador, eletrodomésticos, livros
-Promoção: RTX 4080 SUPER GALAX
-Resposta: Não.
-
-Palavras-chave de interesse: Livros clássicos, livros infantis
-Promoção: Blade Runner - Origens - Vol. 1
-Resposta: Não.
-
-Palavras-chave de interesse:"""
-
-
 # Bot commands
 @bot.message_handler(commands=["start"])
 async def welcome_message(message):
     set_main_chat_id(message.chat.id)
     print(f"Main chat id: {user_data['main_chat_id']}")
-    await bot.send_message(user_data['main_chat_id'], "Olá! Eu sou o Yap Dollar, um bot que fala sobre economia. Xiaohongshu!", reply_markup=HELP_MARKUP)
+    await bot.send_message(user_data['main_chat_id'], "Olá! Eu sou o Dollar Yapper, um bot que te deixa sabendo das melhores promoções! ✨ Xiaohongshu ✨\n\nPara começar, adicione um grupo e um tipo de produto para eu monitorar.", reply_markup=MENU_MARKUP)
 
 @bot.message_handler(commands=["help"])
 async def help_message(message):
-    await bot.send_message(message.chat.id, "O que você gostaria de fazer?", reply_markup=HELP_MARKUP)
+    await bot.send_message(message.chat.id, "O que você gostaria de fazer?", reply_markup=MENU_MARKUP)
 
 
 # Bot callbacks
@@ -133,7 +130,7 @@ async def commandshandlebtn(call):
     callback_data = call.data
     if callback_data == 'main_menu':
         for i in range(len(awaiting_answer)): awaiting_answer[i] = False
-        await bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text='O que você gostaria de fazer?', reply_markup=HELP_MARKUP)
+        await bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text='O que você gostaria de fazer?', reply_markup=MENU_MARKUP)
     
     elif callback_data == 'add_chat':
         awaiting_answer[ADD_CHAT] = True
@@ -153,17 +150,17 @@ async def commandshandlebtn(call):
     
     elif callback_data == 'add_keyword':
         awaiting_answer[ADD_KEYWORD] = True
-        await bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text='Me envie a palavra-chave que deseja adicionar.', reply_markup=MAIN_MENU_MARKUP)
+        await bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text='Qual produto você deseja adicionar?', reply_markup=MAIN_MENU_MARKUP)
     
     elif callback_data == 'remove_keyword':
         awaiting_answer[REMOVE_KEYWORD] = True
         if len(user_data["monitor_keywords"]) == 0:
-            message_text = "Não há palavras-chave para remover."
+            message_text = "Não há produtos para remover."
             awaiting_answer[REMOVE_KEYWORD] = False
         else:
-            message_text = "Me envie a palavra-chave que deseja remover.\n\n"
+            message_text = "Qual produto você deseja remover?\n\n"
             for keyword in user_data["monitor_keywords"]:
-                message_text += f"{keyword}\n"
+                message_text += f"{keyword.capitalize()}\n"
         await bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text=message_text, reply_markup=MAIN_MENU_MARKUP)
 
 @bot.message_handler(func=lambda message: True)
@@ -196,7 +193,7 @@ async def handle_message(message):
                                                             stories_hide_sender=False,
                                                             stories_sound=telethonTypes.NotificationSoundDefault())))
             except Exception as e:
-                await bot.send_message(message.chat.id, f"Não foi possível adicionar o chat [{chat_name}]. Error: {e}")
+                await bot.send_message(message.chat.id, f"Não foi possível adicionar o chat [{chat_name}].\nError: {e}")
                 return
         add_chat_to_monitor(chat_entity.id)
         await bot.send_message(message.chat.id, f"Chat [{chat_name}] adicionado!")
@@ -224,7 +221,7 @@ async def handle_message(message):
         if keyword in user_data["monitor_keywords"]:
             return_message = f"{keyword.capitalize()} já está na lista de monitoramento."
         else:
-            return_message = f"Palavra-chave [{keyword}] adicionada!"
+            return_message = f"Vou ficar de olho em {keyword} para você!"
             user_data["monitor_keywords"].append(keyword)
             save_user_data(user_data)
         await bot.send_message(message.chat.id, return_message)
@@ -232,13 +229,13 @@ async def handle_message(message):
         awaiting_answer[ADD_KEYWORD] = False
 
     elif awaiting_answer[REMOVE_KEYWORD]:
-        keyword = message.text
+        keyword = (message.text).lower()
         if keyword not in user_data["monitor_keywords"]:
-            await bot.send_message(message.chat.id, f"Palavra-chave [{keyword.capitalize()}] não está na lista de monitoramento.")
+            await bot.send_message(message.chat.id, f"Não estava procurando por {keyword.capitalize()}!")
             return
         user_data["monitor_keywords"].remove(keyword)
         save_user_data(user_data)
-        await bot.send_message(message.chat.id, f"Palavra-chave [{keyword}] removida!")
+        await bot.send_message(message.chat.id, f"Vou parar de mandar promoções sobre {keyword.capitalize()}!")
 
         awaiting_answer[REMOVE_KEYWORD] = False
 
@@ -251,8 +248,8 @@ async def handler(event):
         message_text = event.message.message
         chat_title = chat.title if event.is_group else "Private Chat"
         message_text = f"[ {chat_title} ]\n\n{message_text}"
-        monitor_keywords_str = ", ".join(user_data.get("monitor_keywords", []))
 
+        monitor_keywords_str = ", ".join(user_data.get("monitor_keywords", []))
         answer = model.generate(
             prompt + " " + monitor_keywords_str + "\nPromoção: " + message_text + "\nResposta: ",
             chat_mode = False,
