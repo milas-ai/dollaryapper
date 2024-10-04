@@ -13,8 +13,19 @@ import json
 import os
 
 # Constants
-NEW_CHAT =  0
+ADD_CHAT =  0
+REMOVE_CHAT = 1
+ADD_KEYWORD = 2
+REMOVE_KEYWORD = 3
 
+HELP_MARKUP = types.InlineKeyboardMarkup(
+                [[types.InlineKeyboardButton("Adicionar chat", callback_data='add_chat')], 
+                [types.InlineKeyboardButton("Remover chat", callback_data='remove_chat')], 
+                [types.InlineKeyboardButton("Adicionar palavra-chave", callback_data='add_keyword')], 
+                [types.InlineKeyboardButton("Remover palavra-chave", callback_data='remove_keyword')]]
+            )
+
+MAIN_MENU_MARKUP = types.InlineKeyboardMarkup([[types.InlineKeyboardButton("Menu", callback_data='main_menu')]])
 
 # Helper functions
 async def is_participant(client, chat_entity):
@@ -34,7 +45,8 @@ def load_user_data():
         with open("user_data.json", "w") as f:
             json.dump({
                 "main_chat_id": None,
-                "chat_monitor_list": []
+                "chat_monitor_list": [],
+                "monitor_keywords": []
             }, f)
 
     with open("user_data.json", "r") as f:
@@ -64,7 +76,7 @@ client = TelegramClient(
     api_hash=os.getenv("TELEGRAM_API_HASH")
 )
 
-awaiting_answer = [False]
+awaiting_answer = [False, False, False, False]
 
 user_data = load_user_data()
 
@@ -74,15 +86,11 @@ user_data = load_user_data()
 async def welcome_message(message):
     set_main_chat_id(message.chat.id)
     print(f"Main chat id: {user_data['main_chat_id']}")
-    keyboard = [[types.InlineKeyboardButton("Adicionar chat", callback_data='new_chat')]]
-    markup = types.InlineKeyboardMarkup(keyboard)
-    await bot.send_message(user_data['main_chat_id'], "Olá! Eu sou o Yap Dollar, um bot que fala sobre economia.", reply_markup=markup)
+    await bot.send_message(user_data['main_chat_id'], "Olá! Eu sou o Yap Dollar, um bot que fala sobre economia.", reply_markup=HELP_MARKUP)
 
 @bot.message_handler(commands=["help"])
 async def help_message(message):
-    keyboard = [[types.InlineKeyboardButton("Adicionar chat", callback_data='new_chat')]]
-    markup = types.InlineKeyboardMarkup(keyboard)
-    await bot.send_message(message.chat.id, "O que você gostaria de fazer?", reply_markup=markup)
+    await bot.send_message(message.chat.id, "O que você gostaria de fazer?", reply_markup=HELP_MARKUP)
 
 
 # Bot callbacks
@@ -91,23 +99,30 @@ async def commandshandlebtn(call):
     callback_data = call.data
     if callback_data == 'main_menu':
         for i in range(len(awaiting_answer)): awaiting_answer[i] = False
-
-        keyboard = [[types.InlineKeyboardButton("Adicionar chat", callback_data='new_chat')]]
-        markup = types.InlineKeyboardMarkup(keyboard)
-        await bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text='O que você gostaria de fazer?', reply_markup=markup)
-    elif callback_data == 'new_chat':
-        awaiting_answer[NEW_CHAT] = True
-
-        keyboard = [[types.InlineKeyboardButton("Menu", callback_data='main_menu')]]
-        markup = types.InlineKeyboardMarkup(keyboard)
-        await bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text='Me envie o @nome ou link de um chat que deseja adicionar.', reply_markup=markup)
+        await bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text='O que você gostaria de fazer?', reply_markup=HELP_MARKUP)
+    
+    elif callback_data == 'add_chat':
+        awaiting_answer[ADD_CHAT] = True
+        await bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text='Me envie o @nome ou link de um chat que deseja adicionar.', reply_markup=MAIN_MENU_MARKUP)
+    
+    elif callback_data == 'remove_chat':
+        awaiting_answer[REMOVE_CHAT] = True
+        await bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text='Me envie o @nome ou link de um chat que deseja remover.', reply_markup=MAIN_MENU_MARKUP)
+    
+    elif callback_data == 'add_keyword':
+        awaiting_answer[ADD_KEYWORD] = True
+        await bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text='Me envie a palavra-chave que deseja adicionar.', reply_markup=MAIN_MENU_MARKUP)
+    
+    elif callback_data == 'remove_keyword':
+        awaiting_answer[REMOVE_KEYWORD] = True
+        await bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text='Me envie a palavra-chave que deseja remover.', reply_markup=MAIN_MENU_MARKUP)
 
 @bot.message_handler(func=lambda message: True)
 async def handle_message(message):
     if True not in awaiting_answer:
         await bot.send_message(message.chat.id, "Precisa de ajuda? Digite /help")
 
-    elif awaiting_answer[NEW_CHAT]:
+    elif awaiting_answer[ADD_CHAT]:
         chat_id = message.text
         if chat_id[0] != '@' and chat_id.find("t.me") == -1:
             await bot.send_message(message.chat.id, "Chat inválido. Digite o @nome ou link de um chat.")
@@ -132,7 +147,42 @@ async def handle_message(message):
         add_chat_to_monitor(chat_entity.id)
         await bot.send_message(message.chat.id, f"Chat [{chat_name}] adicionado!")
             
-        awaiting_answer[NEW_CHAT] = False
+        awaiting_answer[ADD_CHAT] = False
+    
+    elif awaiting_answer[REMOVE_CHAT]:
+        chat_id = message.text
+        if chat_id[0] != '@' and chat_id.find("t.me") == -1:
+            await bot.send_message(message.chat.id, "Chat inválido. Digite o @nome ou link de um chat.")
+            return
+        chat_entity = await client.get_entity(chat_id)
+        chat_name = chat_entity.title
+        if chat_entity.id not in user_data["chat_monitor_list"]:
+            await bot.send_message(message.chat.id, f"Chat [{chat_name}] não está na lista de monitoramento.")
+            return
+        user_data["chat_monitor_list"].remove(chat_entity.id)
+        save_user_data(user_data)
+        await bot.send_message(message.chat.id, f"Chat [{chat_name}] removido!")
+
+        awaiting_answer[REMOVE_CHAT] = False
+
+    elif awaiting_answer[ADD_KEYWORD]:
+        keyword = message.text
+        user_data["monitor_keywords"].append(keyword)
+        save_user_data(user_data)
+        await bot.send_message(message.chat.id, f"Palavra-chave [{keyword}] adicionada!")
+
+        awaiting_answer[ADD_KEYWORD] = False
+
+    elif awaiting_answer[REMOVE_KEYWORD]:
+        keyword = message.text
+        if keyword not in user_data["monitor_keywords"]:
+            await bot.send_message(message.chat.id, f"Palavra-chave [{keyword}] não está na lista de monitoramento.")
+            return
+        user_data["monitor_keywords"].remove(keyword)
+        save_user_data(user_data)
+        await bot.send_message(message.chat.id, f"Palavra-chave [{keyword}] removida!")
+
+        awaiting_answer[REMOVE_KEYWORD] = False
 
 
 # Client events
@@ -140,11 +190,15 @@ async def handle_message(message):
 async def handler(event):
     chat = await event.get_chat()
     if chat.id in user_data["chat_monitor_list"]:
-        sender = await event.get_sender()
-        sender_name = sender.first_name if sender else "Unknown"
+        keyword_found = False
         message_text = event.message.message
+        for keyword in user_data["monitor_keywords"]:
+            if keyword.lower() in message_text.lower():
+                keyword_found = True
+                break
+        if not keyword_found: return
         chat_title = chat.title if event.is_group else "Private Chat"
-        message_text = f"Chat: {chat_title}\n{message_text}"
+        message_text = f"[ {chat_title} ]\n\n{message_text}"
         await bot.send_message(user_data['main_chat_id'], message_text)
 
 
