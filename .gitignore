@@ -6,4 +6,5 @@
 # telegram session file
 dollar_yapper.session
 
-user_data.json
+# user settings file
+global_data.json

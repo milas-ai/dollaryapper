@@ -18,6 +18,8 @@ REMOVE_CHAT = 1
 ADD_KEYWORD = 2
 REMOVE_KEYWORD = 3
 
+MARITACA_CHECK = True
+
 MENU_MARKUP = types.InlineKeyboardMarkup(
                 [[types.InlineKeyboardButton("Adicionar chat", callback_data='add_chat')], 
                 [types.InlineKeyboardButton("Remover chat", callback_data='remove_chat')], 
@@ -74,39 +76,6 @@ Resposta: Não.
 
 Palavras-chave de interesse:"""
 
-# Helper functions
-async def is_participant(client, chat_entity):
-    try:
-        user = await client.get_me()
-        permissions = await client.get_permissions(chat_entity, user)
-        return True
-    except errors.UserNotParticipantError:
-        return False
-
-def save_user_data(user_data):
-    with open("user_data.json", "w") as f:
-        json.dump(user_data, f)
-
-def load_user_data():
-    if not os.path.isfile("user_data.json"):
-        with open("user_data.json", "w") as f:
-            json.dump({
-                "main_chat_id": None,
-                "chat_monitor_list": [],
-                "monitor_keywords": []
-            }, f)
-
-    with open("user_data.json", "r") as f:
-        return json.load(f)
-
-def set_main_chat_id(chat_id):
-    user_data["main_chat_id"] = chat_id
-    save_user_data(user_data)
-
-def add_chat_to_monitor(chat_id):
-    user_data["chat_monitor_list"].append(chat_id)
-    save_user_data(user_data)
-
 # Setting up the environment
 load_dotenv()
 
@@ -125,24 +94,65 @@ client = TelegramClient(
 
 awaiting_answer = [False, False, False, False]
 
-user_data = load_user_data()
+user = {"id": None, "chat_monitor_list": [], "monitor_keywords": []}
+
+# Helper functions
+async def is_participant(client, chat_entity):
+    try:
+        user = await client.get_me()
+        permissions = await client.get_permissions(chat_entity, user)
+        return True
+    except errors.UserNotParticipantError:
+        return False
+
+def save_global_data():
+    global user
+    with open("global_data.json", "r") as f:
+        global_data = json.load(f)
+
+    global_data[str(user["id"])] = user
+    with open("global_data.json", "w") as f:
+        json.dump(global_data, f)
+
+def set_user(user_id):
+    global user
+    if not os.path.isfile("global_data.json"):
+        with open("global_data.json", "w") as f:
+            json.dump({}, f)
+
+    with open("global_data.json", "r") as f:
+        global_data = json.load(f)
+
+    if str(user_id) not in global_data:
+        global_data[str(user_id)] = {"id": user_id, "chat_monitor_list": [], "monitor_keywords": []}
+        print(f"User {user_id} added to global data.")
+
+    user = global_data[str(user_id)]
+    save_global_data()
+
+def add_chat_to_monitor(chat_id):
+    global user
+    user["chat_monitor_list"].append(chat_id)
+    save_global_data()
 
 
 # Bot commands
 @bot.message_handler(commands=["start"])
 async def welcome_message(message):
-    set_main_chat_id(message.chat.id)
-    print(f"Main chat id: {user_data['main_chat_id']}")
-    await bot.send_message(user_data['main_chat_id'], "Olá! Eu sou o Dollar Yapper, um bot que te deixa sabendo das melhores promoções! ✨ Xiaohongshu ✨\n\nPara começar, adicione um grupo e um tipo de produto para eu monitorar.", reply_markup=MENU_MARKUP)
+    global user
+    set_user(message.chat.id)
+    await bot.send_message(user['id'], "Olá! Eu sou o Dollar Yapper, um bot que te deixa sabendo das melhores promoções! ✨ Xiaohongshu ✨\n\nPara começar, adicione um grupo e um tipo de produto para eu monitorar.", reply_markup=MENU_MARKUP)
 
 @bot.message_handler(commands=["help"])
 async def help_message(message):
+    global user
     await bot.send_message(message.chat.id, "O que você gostaria de fazer?", reply_markup=MENU_MARKUP)
 
 
 # Bot callbacks
 @bot.callback_query_handler(func=lambda call: True)
 async def commandshandlebtn(call):
+    global user
     callback_data = call.data
     if callback_data == 'main_menu':
         for i in range(len(awaiting_answer)): awaiting_answer[i] = False
@@ -154,12 +164,12 @@ async def commandshandlebtn(call):
     
     elif callback_data == 'remove_chat':
         awaiting_answer[REMOVE_CHAT] = True
-        if len(user_data["chat_monitor_list"]) == 0: 
+        if len(user["chat_monitor_list"]) == 0: 
             message_text = "Não há chats para remover."
             awaiting_answer[REMOVE_CHAT] = False
         else:
             message_text = "Me envie o @nome ou link de um chat que deseja remover.\n\n"
-            for chat_id in user_data["chat_monitor_list"]:
+            for chat_id in user["chat_monitor_list"]:
                 chat_entity = await client.get_entity(chat_id)
                 message_text += f"{chat_entity.title}\n"
         await bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text=message_text, reply_markup=MAIN_MENU_MARKUP)
@@ -170,17 +180,18 @@ async def commandshandlebtn(call):
     
     elif callback_data == 'remove_keyword':
         awaiting_answer[REMOVE_KEYWORD] = True
-        if len(user_data["monitor_keywords"]) == 0:
+        if len(user["monitor_keywords"]) == 0:
             message_text = "Não há produtos para remover."
             awaiting_answer[REMOVE_KEYWORD] = False
         else:
             message_text = "Qual produto você deseja remover?\n\n"
-            for keyword in user_data["monitor_keywords"]:
+            for keyword in user["monitor_keywords"]:
                 message_text += f"{keyword.capitalize()}\n"
         await bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text=message_text, reply_markup=MAIN_MENU_MARKUP)
 
 @bot.message_handler(func=lambda message: True)
 async def handle_message(message):
+    global user
     if True not in awaiting_answer:
         await bot.send_message(message.chat.id, "Precisa de ajuda? Digite /help")
 
@@ -191,7 +202,7 @@ async def handle_message(message):
             return
 
         chat_entity = await client.get_entity(chat_id)
-        if chat_entity.id in user_data["chat_monitor_list"]:
+        if chat_entity.id in user["chat_monitor_list"]:
             await bot.send_message(message.chat.id, "Chat já está na lista de monitoramento.")
             return
             
@@ -223,35 +234,35 @@ async def handle_message(message):
             return
         chat_entity = await client.get_entity(chat_id)
         chat_name = chat_entity.title
-        if chat_entity.id not in user_data["chat_monitor_list"]:
+        if chat_entity.id not in user["chat_monitor_list"]:
             await bot.send_message(message.chat.id, f"Chat [{chat_name}] não está na lista de monitoramento.")
             return
-        user_data["chat_monitor_list"].remove(chat_entity.id)
-        save_user_data(user_data)
+        user["chat_monitor_list"].remove(chat_entity.id)
+        save_global_data()
         await bot.send_message(message.chat.id, f"Chat [{chat_name}] removido!")
 
         awaiting_answer[REMOVE_CHAT] = False
 
     elif awaiting_answer[ADD_KEYWORD]:
         keyword = (message.text).lower()
-        if keyword in user_data["monitor_keywords"]:
+        if keyword in user["monitor_keywords"]:
             return_message = f"{keyword.capitalize()} já está na lista de monitoramento."
         else:
             return_message = f"Vou ficar de olho em {keyword} para você!"
-            user_data["monitor_keywords"].append(keyword)
-            save_user_data(user_data)
+            user["monitor_keywords"].append(keyword)
+            save_global_data()
         await bot.send_message(message.chat.id, return_message)
 
         awaiting_answer[ADD_KEYWORD] = False
 
     elif awaiting_answer[REMOVE_KEYWORD]:
         keyword = (message.text).lower()
-        if keyword not in user_data["monitor_keywords"]:
+        if keyword not in user["monitor_keywords"]:
             await bot.send_message(message.chat.id, f"Não estava procurando por {keyword.capitalize()}!")
             return
-        user_data["monitor_keywords"].remove(keyword)
-        save_user_data(user_data)
-        await bot.send_message(message.chat.id, f"Vou parar de mandar promoções sobre {keyword.capitalize()}!")
+        user["monitor_keywords"].remove(keyword)
+        save_global_data()
+        await bot.send_message(message.chat.id, f"Vou parar de mandar promoções sobre {keyword}!")
 
         awaiting_answer[REMOVE_KEYWORD] = False
 
@@ -259,22 +270,30 @@ async def handle_message(message):
 # Client events
 @client.on(events.NewMessage())
 async def handler(event):
+    global user
     chat = await event.get_chat()
-    if chat.id in user_data["chat_monitor_list"]:
+    if chat.id in user["chat_monitor_list"]:
         message_text = event.message.message
         chat_title = chat.title if event.is_group else "Private Chat"
         message_text = f"[ {chat_title} ]\n\n{message_text}"
 
-        monitor_keywords_str = ", ".join(user_data.get("monitor_keywords", []))
-        answer = model.generate(
-            prompt + " " + monitor_keywords_str + "\nPromoção: " + message_text + "\nResposta: ",
-            chat_mode = False,
-            do_sample = False,
-            stopping_tokens = ["\n"]
-        )["answer"]
+        if MARITACA_CHECK:
+            monitor_keywords_str = ", ".join(user.get("monitor_keywords", []))
+            answer = model.generate(
+                prompt + " " + monitor_keywords_str + "\nPromoção: " + message_text + "\nResposta: ",
+                chat_mode = False,
+                do_sample = False,
+                stopping_tokens = ["\n"]
+            )["answer"]
 
-        if (answer == "Sim."):
-            await bot.send_message(user_data['main_chat_id'], message_text)
+            if (answer == "Sim."):
+                await bot.send_message(user['id'], message_text)
+        else:
+            for keyword in user["monitor_keywords"]:
+                if keyword in message_text:
+                    await bot.send_message(user['id'], message_text)
+                    break
+
 
 # Main functions
 async def scheduler():
