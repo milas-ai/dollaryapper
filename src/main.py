@@ -28,6 +28,10 @@ HELP_MARKUP = types.InlineKeyboardMarkup(
 MAIN_MENU_MARKUP = types.InlineKeyboardMarkup([[types.InlineKeyboardButton("Menu", callback_data='main_menu')]])
 
 # Helper functions
+
+os.remove("dollar_yapper_test.session")
+
+
 async def is_participant(client, chat_entity):
     try:
         user = await client.get_me()
