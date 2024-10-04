@@ -1,8 +1,7 @@
 from dotenv import load_dotenv
-from telethon import TelegramClient, events, errors, functions
-from telebot.async_telebot import AsyncTeleBot
 from telebot import types
-from telethon.sync import TelegramClient
+from telebot.async_telebot import AsyncTeleBot
+from telethon import TelegramClient, events, errors, functions
 from telethon.tl.functions.account import UpdateNotifySettingsRequest
 from telethon.tl.types import InputNotifyPeer, PeerNotifySettings
 from telethon import types as telethonTypes
@@ -10,8 +9,14 @@ import datetime
 import maritalk
 import aioschedule
 import asyncio
+import json
 import os
 
+# Constants
+NEW_CHAT =  0
+
+
+# Helper functions
 async def is_participant(client, chat_entity):
     try:
         user = await client.get_me()
@@ -20,9 +25,32 @@ async def is_participant(client, chat_entity):
     except errors.UserNotParticipantError:
         return False
 
+def save_user_data(user_data):
+    with open("user_data.json", "w") as f:
+        json.dump(user_data, f)
+
+def load_user_data():
+    if not os.path.isfile("user_data.json"):
+        with open("user_data.json", "w") as f:
+            json.dump({
+                "main_chat_id": None,
+                "chat_monitor_list": []
+            }, f)
+
+    with open("user_data.json", "r") as f:
+        return json.load(f)
+
+def set_main_chat_id(chat_id):
+    user_data["main_chat_id"] = chat_id
+    save_user_data(user_data)
+
+def add_chat_to_monitor(chat_id):
+    user_data["chat_monitor_list"].append(chat_id)
+    save_user_data(user_data)
+
+# Setting up the environment
 load_dotenv()
 
-# Setting up objects
 model = maritalk.MariTalk(
     key=os.getenv("MARITACA_KEY"),
     model="sabia-3"
@@ -31,25 +59,24 @@ model = maritalk.MariTalk(
 bot = AsyncTeleBot(os.getenv("TELEGRAM_TOKEN"))
 
 client = TelegramClient(
-    "dollar_yapper_test",
+    "dollar_yapper",
     api_id=os.getenv("TELEGRAM_API_ID"),
     api_hash=os.getenv("TELEGRAM_API_HASH")
 )
 
-NEW_CHAT =  0
 awaiting_answer = [False]
 
-
-# List of chats that the bot will listen to
-chat_list = []
+user_data = load_user_data()
 
 
 # Bot commands
 @bot.message_handler(commands=["start"])
 async def welcome_message(message):
+    set_main_chat_id(message.chat.id)
+    print(f"Main chat id: {user_data['main_chat_id']}")
     keyboard = [[types.InlineKeyboardButton("Adicionar chat", callback_data='new_chat')]]
     markup = types.InlineKeyboardMarkup(keyboard)
-    await bot.send_message(message.chat.id, "Olá! Eu sou o Yap Dollar, um bot que fala sobre economia.", reply_markup=markup)
+    await bot.send_message(user_data['main_chat_id'], "Olá! Eu sou o Yap Dollar, um bot que fala sobre economia.", reply_markup=markup)
 
 @bot.message_handler(commands=["help"])
 async def help_message(message):
@@ -102,23 +129,26 @@ async def handle_message(message):
             except Exception as e:
                 await bot.send_message(message.chat.id, f"Não foi possível adicionar o chat [{chat_name}]. Error: {e}")
                 return
-        chat_list.append(chat_entity.id)
+        add_chat_to_monitor(chat_entity.id)
         await bot.send_message(message.chat.id, f"Chat [{chat_name}] adicionado!")
             
         awaiting_answer[NEW_CHAT] = False
+
 
 # Client events
 @client.on(events.NewMessage())
 async def handler(event):
     chat = await event.get_chat()
-    if str(chat.id) in chat_list:
+    if chat.id in user_data["chat_monitor_list"]:
         sender = await event.get_sender()
         sender_name = sender.first_name if sender else "Unknown"
         message_text = event.message.message
         chat_title = chat.title if event.is_group else "Private Chat"
+        message_text = f"Chat: {chat_title}\n{message_text}"
+        await bot.send_message(user_data['main_chat_id'], message_text)
 
-        print(f"Message from {sender_name} in {chat_title}: {message_text}")
 
+# Main functions
 async def scheduler():
     while True:
         await aioschedule.run_pending()
@@ -131,7 +161,6 @@ async def main():
         print(f"Error while handling message: {str(e)}")
 
 if __name__ == "__main__":
-    # asyncio.run(main())
     try:
         with client:
             client.start(phone=os.getenv("PHONE_NUMBER"))
