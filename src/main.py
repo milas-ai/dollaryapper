@@ -20,6 +20,7 @@ ADD_KEYWORD = 2
 REMOVE_KEYWORD = 3
 
 MARITACA_CHECK = True
+PRIVATE_MODE = False
 
 MENU_MARKUP = types.InlineKeyboardMarkup(
                 [[types.InlineKeyboardButton("Adicionar chat", callback_data='add_chat')], 
@@ -140,12 +141,18 @@ def add_chat_to_monitor(chat_id):
 # Bot commands
 @bot.message_handler(commands=["start"])
 async def welcome_message(message):
+    if PRIVATE_MODE:
+        await bot.send_message(message.chat.id, "Desculpe, mas este bot não está disponível publicamente.")
+        return
     global user
     set_user(message.chat.id)
     await bot.send_message(user['id'], "Olá! Eu sou o Dollar Yapper, um bot que te deixa sabendo das melhores promoções! ✨ Xiaohongshu ✨\n\nPara começar, adicione um grupo e um tipo de produto para eu monitorar.", reply_markup=MENU_MARKUP)
 
 @bot.message_handler(commands=["help"])
 async def help_message(message):
+    if PRIVATE_MODE:
+        await bot.send_message(message.chat.id, "Desculpe, mas este bot não está disponível publicamente.")
+        return
     global user
     await bot.send_message(message.chat.id, "O que você gostaria de fazer?", reply_markup=MENU_MARKUP)
 
@@ -192,6 +199,9 @@ async def commandshandlebtn(call):
 
 @bot.message_handler(func=lambda message: True)
 async def handle_message(message):
+    if PRIVATE_MODE:
+        await bot.send_message(message.chat.id, "Desculpe, mas este bot não está disponível publicamente.")
+        return
     global user
     if True not in awaiting_answer:
         await bot.send_message(message.chat.id, "Precisa de ajuda? Digite /help")
@@ -313,6 +323,8 @@ if __name__ == "__main__":
         for arg in sys.argv[1:]:
             if arg == "--no-maritaca":
                 MARITACA_CHECK = False
+            if arg == "--private":
+                PRIVATE_MODE = True
     try:
         with client:
             client.start(phone=os.getenv("PHONE_NUMBER"))
