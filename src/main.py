@@ -2,6 +2,11 @@ from dotenv import load_dotenv
 from telethon import TelegramClient, events, errors, functions
 from telebot.async_telebot import AsyncTeleBot
 from telebot import types
+from telethon.sync import TelegramClient
+from telethon.tl.functions.account import UpdateNotifySettingsRequest
+from telethon.tl.types import InputNotifyPeer, PeerNotifySettings
+from telethon import types as telethonTypes
+import datetime
 import maritalk
 import aioschedule
 import asyncio
@@ -26,7 +31,7 @@ model = maritalk.MariTalk(
 bot = AsyncTeleBot(os.getenv("TELEGRAM_TOKEN"))
 
 client = TelegramClient(
-    "dollar_yapper",
+    "dollar_yapper_test",
     api_id=os.getenv("TELEGRAM_API_ID"),
     api_hash=os.getenv("TELEGRAM_API_HASH")
 )
@@ -86,9 +91,16 @@ async def handle_message(message):
             try:
                 await client(functions.channels.JoinChannelRequest(chat_entity))
                 if not await is_participant(client, chat_entity): raise Exception
-                await client(functions.account.UpdateNotifySettings(peer=chat_entity, settings=types.InputPeerNotifySettings(mute_until=0, show_previews=False)) 
-            except:
-                await bot.send_message(message.chat.id, f"Não foi possível adicionar o chat [{chat_name}].")
+                await client(UpdateNotifySettingsRequest(peer=InputNotifyPeer(chat_id), 
+                                                         settings=telethonTypes.InputPeerNotifySettings(
+                                                            show_previews=False,
+                                                            mute_until=datetime.datetime.now() + datetime.timedelta(days=365),
+                                                            sound=telethonTypes.NotificationSoundDefault(),
+                                                            stories_muted=False,
+                                                            stories_hide_sender=False,
+                                                            stories_sound=telethonTypes.NotificationSoundDefault())))
+            except Exception as e:
+                await bot.send_message(message.chat.id, f"Não foi possível adicionar o chat [{chat_name}]. Error: {e}")
                 return
         chat_list.append(chat_entity.id)
         await bot.send_message(message.chat.id, f"Chat [{chat_name}] adicionado!")
@@ -113,10 +125,16 @@ async def scheduler():
         await asyncio.sleep(1)
 
 async def main():
-    await asyncio.gather(bot.infinity_polling(), scheduler())
+    try:
+        await asyncio.gather(bot.infinity_polling(), scheduler())
+    except Exception as e:
+        print(f"Error while handling message: {str(e)}")
 
 if __name__ == "__main__":
     # asyncio.run(main())
-    with client:
-        client.start(phone=os.getenv("PHONE_NUMBER"))
-        client.loop.run_until_complete(main())
+    try:
+        with client:
+            client.start(phone=os.getenv("PHONE_NUMBER"))
+            client.loop.run_until_complete(main())
+    except Exception as e:
+        print(f"Error while handling message: {str(e)}")
