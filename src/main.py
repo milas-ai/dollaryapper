@@ -251,17 +251,14 @@ async def handler(event):
         message_text = event.message.message
         chat_title = chat.title if event.is_group else "Private Chat"
         message_text = f"[ {chat_title} ]\n\n{message_text}"
+        monitor_keywords_str = ", ".join(user_data.get("monitor_keywords", []))
 
-        # TODO make bot use user's preferences
         answer = model.generate(
-            prompt + " " + "placa de vídeo" + "\nPromoção: " + message_text + "\nResposta: ",
+            prompt + " " + monitor_keywords_str + "\nPromoção: " + message_text + "\nResposta: ",
             chat_mode = False,
             do_sample = False,
             stopping_tokens = ["\n"]
         )["answer"]
-        # DEBUG
-        print(message_text)
-        print(answer)
 
         if (answer == "Sim."):
             await bot.send_message(user_data['main_chat_id'], message_text)
