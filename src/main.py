@@ -107,7 +107,15 @@ async def commandshandlebtn(call):
     
     elif callback_data == 'remove_chat':
         awaiting_answer[REMOVE_CHAT] = True
-        await bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text='Me envie o @nome ou link de um chat que deseja remover.', reply_markup=MAIN_MENU_MARKUP)
+        if len(user_data["chat_monitor_list"]) == 0: 
+            message_text = "Não há chats para remover."
+            awaiting_answer[REMOVE_CHAT] = False
+        else:
+            message_text = "Me envie o @nome ou link de um chat que deseja remover.\n\n"
+            for chat_id in user_data["chat_monitor_list"]:
+                chat_entity = await client.get_entity(chat_id)
+                message_text += f"{chat_entity.title}\n"
+        await bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text=message_text, reply_markup=MAIN_MENU_MARKUP)
     
     elif callback_data == 'add_keyword':
         awaiting_answer[ADD_KEYWORD] = True
@@ -115,7 +123,14 @@ async def commandshandlebtn(call):
     
     elif callback_data == 'remove_keyword':
         awaiting_answer[REMOVE_KEYWORD] = True
-        await bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text='Me envie a palavra-chave que deseja remover.', reply_markup=MAIN_MENU_MARKUP)
+        if len(user_data["monitor_keywords"]) == 0:
+            message_text = "Não há palavras-chave para remover."
+            awaiting_answer[REMOVE_KEYWORD] = False
+        else:
+            message_text = "Me envie a palavra-chave que deseja remover.\n\n"
+            for keyword in user_data["monitor_keywords"]:
+                message_text += f"{keyword}\n"
+        await bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text=message_text, reply_markup=MAIN_MENU_MARKUP)
 
 @bot.message_handler(func=lambda message: True)
 async def handle_message(message):
