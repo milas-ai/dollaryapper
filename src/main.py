@@ -10,6 +10,7 @@ import maritalk
 import aioschedule
 import asyncio
 import json
+import sys
 import os
 
 # Constants
@@ -308,6 +309,10 @@ async def main():
         print(f"Error while handling message: {str(e)}")
 
 if __name__ == "__main__":
+    if len(sys.argv) > 1:
+        for arg in sys.argv[1:]:
+            if arg == "--no-maritaca":
+                MARITACA_CHECK = False
     try:
         with client:
             client.start(phone=os.getenv("PHONE_NUMBER"))
