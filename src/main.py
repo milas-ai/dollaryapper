@@ -142,7 +142,12 @@ async def handle_message(message):
         if chat_id[0] != '@' and chat_id.find("t.me") == -1:
             await bot.send_message(message.chat.id, "Chat inválido. Digite o @nome ou link de um chat.")
             return
+
         chat_entity = await client.get_entity(chat_id)
+        if chat_entity.id in user_data["chat_monitor_list"]:
+            await bot.send_message(message.chat.id, "Chat já está na lista de monitoramento.")
+            return
+            
         chat_name = chat_entity.title
         if not await is_participant(client, chat_entity):
             try:
@@ -181,17 +186,21 @@ async def handle_message(message):
         awaiting_answer[REMOVE_CHAT] = False
 
     elif awaiting_answer[ADD_KEYWORD]:
-        keyword = message.text
-        user_data["monitor_keywords"].append(keyword)
-        save_user_data(user_data)
-        await bot.send_message(message.chat.id, f"Palavra-chave [{keyword}] adicionada!")
+        keyword = (message.text).lower()
+        if keyword in user_data["monitor_keywords"]:
+            return_message = f"{keyword.capitalize()} já está na lista de monitoramento."
+        else:
+            return_message = f"Palavra-chave [{keyword}] adicionada!"
+            user_data["monitor_keywords"].append(keyword)
+            save_user_data(user_data)
+        await bot.send_message(message.chat.id, return_message)
 
         awaiting_answer[ADD_KEYWORD] = False
 
     elif awaiting_answer[REMOVE_KEYWORD]:
         keyword = message.text
         if keyword not in user_data["monitor_keywords"]:
-            await bot.send_message(message.chat.id, f"Palavra-chave [{keyword}] não está na lista de monitoramento.")
+            await bot.send_message(message.chat.id, f"Palavra-chave [{keyword.capitalize()}] não está na lista de monitoramento.")
             return
         user_data["monitor_keywords"].remove(keyword)
         save_user_data(user_data)
