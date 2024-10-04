@@ -81,6 +81,38 @@ awaiting_answer = [False, False, False, False]
 user_data = load_user_data()
 
 
+# Base prompt used for filtering
+prompt = """Você é um Chatbot de filtragem. Seu objetivo é analisar mensagens de promoções que você recebe em chats do Telegram e notificar o usuário sobre quais mensagens são do interesse dele. \
+Você irá receber as palavras-chave de interesse do usuário e identificar se uma mensagem é relacionada à alguma delas ou não. Suas respostas devem consistir apenas de "Sim", em caso afirmativo, ou "Não", caso contrário. \
+Você jamais deverá falar mais que isso!!
+
+Palavras-chave de interesse: Controle Video Game
+Promoção: Promoção de Natal na Amazon, XBOX Joystick S546 por apenas 4 reais!!!
+Resposta: Sim.
+
+Palavras-chave de interesse: Controle Video Game
+Promoção: Controle para televisão LG 925, OFERTA IMPERDÍVEL POR APENAS 10 REAIS!!!
+Resposta: Não.
+
+Palavras-chave de interesse: Processador, móveis
+Promoção: INTEL I5 12400F (6/12) - PLACAS H610 / B660 / B760
+Resposta: Sim.
+
+Palavras-chave de interesse: Periféricos de computador
+Promoção: MONITOR NINJA TENSEIGAN 27''
+Resposta: Sim.
+
+Palavras-chave de interesse: Periféricos de computador, eletrodomésticos, livros
+Promoção: RTX 4080 SUPER GALAX
+Resposta: Não.
+
+Palavras-chave de interesse: Livros clássicos, livros infantis
+Promoção: Blade Runner - Origens - Vol. 1
+Resposta: Não.
+
+Palavras-chave de interesse:"""
+
+
 # Bot commands
 @bot.message_handler(commands=["start"])
 async def welcome_message(message):
@@ -244,4 +276,3 @@ if __name__ == "__main__":
             client.start(phone=os.getenv("PHONE_NUMBER"))
             client.loop.run_until_complete(main())
     except Exception as e:
-        print(f"Error while handling message: {str(e)}")
