@@ -122,7 +122,7 @@ Palavras-chave de interesse:"""
 async def welcome_message(message):
     set_main_chat_id(message.chat.id)
     print(f"Main chat id: {user_data['main_chat_id']}")
-    await bot.send_message(user_data['main_chat_id'], "Olá! Eu sou o Yap Dollar, um bot que fala sobre economia.", reply_markup=HELP_MARKUP)
+    await bot.send_message(user_data['main_chat_id'], "Olá! Eu sou o Yap Dollar, um bot que fala sobre economia. Xiaohongshu!", reply_markup=HELP_MARKUP)
 
 @bot.message_handler(commands=["help"])
 async def help_message(message):
