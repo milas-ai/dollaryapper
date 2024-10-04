@@ -28,6 +28,8 @@ HELP_MARKUP = types.InlineKeyboardMarkup(
 MAIN_MENU_MARKUP = types.InlineKeyboardMarkup([[types.InlineKeyboardButton("Menu", callback_data='main_menu')]])
 
 # Helper functions
+
+
 async def is_participant(client, chat_entity):
     try:
         user = await client.get_me()
@@ -81,12 +83,44 @@ awaiting_answer = [False, False, False, False]
 user_data = load_user_data()
 
 
+# Base prompt used for filtering
+prompt = """Você é um Chatbot de filtragem. Seu objetivo é analisar mensagens de promoções que você recebe em chats do Telegram e notificar o usuário sobre quais mensagens são do interesse dele. \
+Você irá receber as palavras-chave de interesse do usuário e identificar se uma mensagem é relacionada à alguma delas ou não. Suas respostas devem consistir apenas de "Sim", em caso afirmativo, ou "Não", caso contrário. \
+Você jamais deverá falar mais que isso!!
+
+Palavras-chave de interesse: Controle Video Game
+Promoção: Promoção de Natal na Amazon, XBOX Joystick S546 por apenas 4 reais!!!
+Resposta: Sim.
+
+Palavras-chave de interesse: Controle Video Game
+Promoção: Controle para televisão LG 925, OFERTA IMPERDÍVEL POR APENAS 10 REAIS!!!
+Resposta: Não.
+
+Palavras-chave de interesse: Processador, móveis
+Promoção: INTEL I5 12400F (6/12) - PLACAS H610 / B660 / B760
+Resposta: Sim.
+
+Palavras-chave de interesse: Periféricos de computador
+Promoção: MONITOR NINJA TENSEIGAN 27''
+Resposta: Sim.
+
+Palavras-chave de interesse: Periféricos de computador, eletrodomésticos, livros
+Promoção: RTX 4080 SUPER GALAX
+Resposta: Não.
+
+Palavras-chave de interesse: Livros clássicos, livros infantis
+Promoção: Blade Runner - Origens - Vol. 1
+Resposta: Não.
+
+Palavras-chave de interesse:"""
+
+
 # Bot commands
 @bot.message_handler(commands=["start"])
 async def welcome_message(message):
     set_main_chat_id(message.chat.id)
     print(f"Main chat id: {user_data['main_chat_id']}")
-    await bot.send_message(user_data['main_chat_id'], "Olá! Eu sou o Yap Dollar, um bot que fala sobre economia.", reply_markup=HELP_MARKUP)
+    await bot.send_message(user_data['main_chat_id'], "Olá! Eu sou o Yap Dollar, um bot que fala sobre economia. Xiaohongshu!", reply_markup=HELP_MARKUP)
 
 @bot.message_handler(commands=["help"])
 async def help_message(message):
@@ -214,17 +248,20 @@ async def handle_message(message):
 async def handler(event):
     chat = await event.get_chat()
     if chat.id in user_data["chat_monitor_list"]:
-        keyword_found = False
         message_text = event.message.message
-        for keyword in user_data["monitor_keywords"]:
-            if keyword.lower() in message_text.lower():
-                keyword_found = True
-                break
-        if not keyword_found: return
         chat_title = chat.title if event.is_group else "Private Chat"
         message_text = f"[ {chat_title} ]\n\n{message_text}"
-        await bot.send_message(user_data['main_chat_id'], message_text)
+        monitor_keywords_str = ", ".join(user_data.get("monitor_keywords", []))
 
+        answer = model.generate(
+            prompt + " " + monitor_keywords_str + "\nPromoção: " + message_text + "\nResposta: ",
+            chat_mode = False,
+            do_sample = False,
+            stopping_tokens = ["\n"]
+        )["answer"]
+
+        if (answer == "Sim."):
+            await bot.send_message(user_data['main_chat_id'], message_text)
 
 # Main functions
 async def scheduler():
