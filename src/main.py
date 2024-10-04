@@ -28,7 +28,7 @@ MENU_MARKUP = types.InlineKeyboardMarkup(
 MAIN_MENU_MARKUP = types.InlineKeyboardMarkup([[types.InlineKeyboardButton("Menu", callback_data='main_menu')]])
 
 # Base prompt used for filtering
-prompt = """Você é um Chatbot de filtragem. Seu objetivo é analisar mensagens de promoções que você recebe em chats do Telegram e notificar o usuário sobre quais mensagens são do interesse dele. \
+prompt = """Você é um Chatbot de filtragem. Seu objetivo é analisar mensagens de promoções de QUALQUER TIPO DE PRODUTO que você recebe em chats do Telegram e notificar o usuário sobre quais mensagens são do interesse dele. \
 Você irá receber as palavras-chave de interesse do usuário e identificar se uma mensagem é relacionada à alguma delas ou não. Suas respostas devem consistir apenas de "Sim", em caso afirmativo, ou "Não", caso contrário. \
 Você jamais deverá falar mais que isso!!
 
@@ -54,6 +54,22 @@ Resposta: Não.
 
 Palavras-chave de interesse: livros clássicos, livros infantis
 Promoção: Blade Runner - Origens - Vol. 1
+Resposta: Não.
+
+Palavras-chave de interesse: copos, cadeiras, geladeiras, brinquedos
+Promoção: Caneca Stanley 50 reais!!
+Resposta: Sim.
+
+Palavras-chave de interesse: eletrodomésticos, cadeiras, livros
+Promoção: Micro-ondas por 2 reais.
+Resposta: Sim.
+
+Palavras-chave de interesse: roupas, calçados, móveis
+Promoção: Tênis All Star 50% OFF
+Resposta: Sim.
+
+Palavras-chave de interesse: eletro domésticos, calçados, móveis
+Promoção: Vestido Shein metade do preço
 Resposta: Não.
 
 Palavras-chave de interesse:"""
