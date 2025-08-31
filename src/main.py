@@ -142,6 +142,7 @@ def add_chat_to_monitor(chat_id):
 @bot.message_handler(commands=["start"])
 async def welcome_message(message):
     if PRIVATE_MODE and message.chat.id != int(os.getenv("PRIVATE_USER_ID")):
+        print(f"User {message.chat.id} tentou acessar o bot.")
         await bot.send_message(message.chat.id, "Desculpe, mas este bot não está disponível publicamente.")
         return
     global user
